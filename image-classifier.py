@@ -13,12 +13,13 @@ class mainGUI(object):
         self.ROOT.title = "Image Classifier"
         self.directory = './experiments'
         self.csvFile = './MasterExperiment.csv'
+        self.newCSVFile = './MasterExperimentEdit.csv'
         self.allFiles = sorted(os.listdir(self.directory))
         self.fIndex = 0
         self.file = ""
         self.experiment = -1
         self.step = -1
-        self.saveData = []
+        self.saveData = {}
 
         self.fileLabel = tk.Label(self.ROOT, text="File Name")
         self.fileLabel.place(relx=0.5, rely=1, anchor='n')
@@ -39,16 +40,20 @@ class mainGUI(object):
         self.classText = tk.Text(self.ROOT, height=1, width=6, bg='white', fg='black')
         self.classText.pack()
 
-        self.saveButton = tk.Button(self.ROOT, text="Save", command=lambda:self.SaveNotes())
+        self.saveButton = tk.Button(self.ROOT, text="Save Changes", command=lambda:self.SaveNotes())
         self.saveButton.pack()
 
         self.nextButton = tk.Button(self.ROOT, text="Next Image", command=lambda:self.NextImage())
         self.nextButton.pack()
 
+        self.saveExitButton = tk.Button(self.ROOT, text="Export and Exit", command=lambda:self.SaveExit())
+        self.saveExitButton.pack()
+
         self.img = self.canvas.create_image(200, 400)
         self.ROOT.mainloop()
 
     def SaveNotes(self):
+        #Grabs the class and observation from the text boxes
         sClass = self.classText.get("1.0", tk.END).strip()
         sObser = self.observationText.get("1.0", tk.END).strip()
 
@@ -56,17 +61,16 @@ class mainGUI(object):
         print("Class:",sClass)
         print("Observation:",sObser)
 
+        # We open the file and find the row we edited in order to get the data we need to build our row for saving
         with open(self.csvFile) as csv_file:
             csvReader = csv.reader(csv_file, delimiter=',')
-            #csvWriter = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-
             lineCount = 0
-            lineMin = 18*self.experiment+10
+            lineMin = 18*self.experiment+10 
             lineMax = lineMin+14
             for row in csvReader:
                 if lineCount > lineMin and lineCount < lineMax:
                     if int(row[0]) == self.step:
-                        self.saveData.extend([row[0], row[1], sClass, row[3], row[4], row[5], row[6], row[7], sObser])
+                        self.saveData[lineCount] = [row[0], row[1], sClass, row[3], row[4], row[5], row[6], row[7], sObser]
                         print("Saved!")
                         return
                 lineCount += 1
@@ -85,10 +89,12 @@ class mainGUI(object):
             self.fIndex += 1
             return
         
+        #This gets the experiment number and step from the file name
         regRes = re.findall("\d+", self.file)
         self.experiment = int(regRes[0])
         self.step = int(regRes[1])
 
+        #This skips any images that we've already entered data for in the csv
         with open(self.csvFile) as csv_file:
             csvReader = csv.reader(csv_file, delimiter=',')
             lineCount = 0
@@ -105,7 +111,6 @@ class mainGUI(object):
                 lineCount += 1
         
         self.NextFile()
-        #self.ROOT.update()
 
     def NextFile(self):
         self.photo = tk.PhotoImage(file=self.file)
@@ -115,6 +120,27 @@ class mainGUI(object):
         self.classText.delete('1.0', tk.END)
         self.observationText.delete('1.0', tk.END)
         self.fIndex += 1
+
+    def SaveExit(self):
+        #This writes a new CSV using the data from the original CSV
+        print("Exiting App")
+        with open(self.csvFile) as csv_file:
+            with open(self.newCSVFile, "w+") as new_csv_file:
+                csvReader = csv.reader(csv_file, delimiter=',')
+                csvWriter = csv.writer(new_csv_file, delimiter=',')
+                lineCount = 0
+                for row in csvReader:
+                    #This adds in our new data
+                    if lineCount in self.saveData:
+                        csvWriter.writerow(self.saveData[lineCount])
+                    else:
+                        csvWriter.writerow(row)
+                    lineCount += 1
+
+        # Overwrite our file
+        os.remove(self.csvFile)
+        os.rename(self.newCSVFile, self.csvFile)
+        sys.exit()
 
     def ReadAsCSV(self):
         return ""
