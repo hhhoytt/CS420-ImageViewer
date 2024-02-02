@@ -1,25 +1,23 @@
 import sys
 import os
-import cv2
 import re
 import csv
 import tkinter as tk
-from tkinter import PhotoImage
-from tkinter import Label
 
 class mainGUI(object):
     def __init__(self):
         self.ROOT = tk.Tk()
-        self.ROOT.title = "Image Classifier"
-        self.directory = './experiments'
+        self.directory = './experiments' #Directory with all the images
         self.csvFile = './MasterExperiment.csv'
-        self.newCSVFile = './MasterExperimentEdit.csv'
+        self.newCSVFile = './MasterExperimentEdit.csv' #When exporting, the csv is temporarily saved in this file before the overwrite
         self.allFiles = sorted(os.listdir(self.directory))
-        self.fIndex = 0
-        self.file = ""
+        self.fIndex = 0 #File index, tracks currently opened file
+        self.file = "" #File that's currently open
         self.experiment = -1
         self.step = -1
-        self.saveData = {}
+        self.saveData = {} #Tracks updated rows for when the data is exported
+
+        self.ROOT.title("Image Classifier")
 
         self.fileLabel = tk.Label(self.ROOT, text="File Name")
         self.fileLabel.place(relx=0.5, rely=1, anchor='n')
@@ -32,24 +30,24 @@ class mainGUI(object):
         self.observationLabel.pack()
 
         self.observationText = tk.Text(self.ROOT, height=1, width=30, bg='white', fg='black')
+        self.observationText.bind("<Tab>", self.FocusNext)
         self.observationText.pack()
 
         self.classTextLabel = tk.Label(self.ROOT, text="Class")
         self.classTextLabel.pack()
 
         self.classText = tk.Text(self.ROOT, height=1, width=6, bg='white', fg='black')
+        self.classText.bind("<Tab>", self.FocusPrev)
         self.classText.pack()
 
-        self.saveButton = tk.Button(self.ROOT, text="Save Changes", command=lambda:self.SaveNotes())
+        self.saveButton = tk.Button(self.ROOT, text="Next Image", command=lambda:self.SaveNotes())
         self.saveButton.pack()
-
-        self.nextButton = tk.Button(self.ROOT, text="Next Image", command=lambda:self.NextImage())
-        self.nextButton.pack()
 
         self.saveExitButton = tk.Button(self.ROOT, text="Export and Exit", command=lambda:self.SaveExit())
         self.saveExitButton.pack()
 
         self.img = self.canvas.create_image(200, 400)
+        self.NextImage()
         self.ROOT.mainloop()
 
     def SaveNotes(self):
@@ -72,8 +70,10 @@ class mainGUI(object):
                     if int(row[0]) == self.step:
                         self.saveData[lineCount] = [row[0], row[1], sClass, row[3], row[4], row[5], row[6], row[7], sObser]
                         print("Saved!")
-                        return
+                        break
                 lineCount += 1
+
+        self.NextImage()
 
     def NextImage(self):
 
@@ -111,6 +111,7 @@ class mainGUI(object):
                 lineCount += 1
         
         self.NextFile()
+        self.FocusPrev('') #This is a hack so the event param is satisfied
 
     def NextFile(self):
         self.photo = tk.PhotoImage(file=self.file)
@@ -144,6 +145,14 @@ class mainGUI(object):
 
     def ReadAsCSV(self):
         return ""
+    
+    def FocusNext(self, event):
+        event.widget.tk_focusNext().focus()
+        return("break")
+    
+    def FocusPrev(self, event):
+        self.observationText.focus_set()
+        return("break")
 
 
 if __name__ == "__main__":
